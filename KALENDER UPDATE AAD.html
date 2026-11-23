@@ -1,0 +1,3425 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Konten Sosmed 2027</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK (Opsional - aktif otomatis jika firebaseConfig diisi) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Top Header -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center gap-2">
+            <div class="flex items-center space-x-2 min-w-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h1 class="font-bold text-base sm:text-lg tracking-wide truncate">Agenda Konten 2027</h1>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+                <span id="roleBadge" class="text-xs bg-indigo-700 px-2.5 py-1 rounded-full font-medium">👀 Public View</span>
+                <button onclick="toggleAdminLogin()" id="adminBtn" class="bg-indigo-500 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition shadow-sm">
+                    Admin Login
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-3xl w-full mx-auto p-4 flex-grow space-y-5">
+
+        <!-- Banner Info Mode -->
+        <div id="setupBanner" class="bg-amber-50 border border-amber-200 text-amber-800 p-3.5 rounded-xl text-xs hidden">
+            <span class="font-bold">Info Penyimpanan:</span> Data berjalan di memori lokal browser. Gunakan menu <strong>Backup / Restore JSON</strong> di mode Admin untuk pindah perangkat, atau isi <code>firebaseConfig</code> di dalam HTML untuk sinkronisasi otomatis antar-HP.
+        </div>
+
+        <!-- Summary & Countdown Card -->
+        <div class="bg-gradient-to-br from-indigo-600 to-violet-700 text-white p-5 sm:p-6 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                    <p class="text-indigo-200 text-xs font-semibold uppercase tracking-wider">Dashboard Agenda Konten Sosmed</p>
+                    <h2 id="nextAgendaTitle" class="text-base sm:text-lg font-bold mt-1 leading-snug">Memuat agenda terdekat...</h2>
+                    <p id="nextAgendaMeta" class="text-xs text-indigo-200 mt-0.5">-</p>
+                </div>
+                <div class="bg-white/15 backdrop-blur-sm px-3.5 py-2 rounded-xl text-left sm:text-right shrink-0">
+                    <p class="text-[11px] text-indigo-100">Waktu Sekarang (WIB)</p>
+                    <p id="liveClock" class="text-sm font-bold tracking-wide">-</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 sm:gap-3 mt-5 pt-4 border-t border-indigo-500/30 text-center">
+                <div class="bg-white/10 rounded-xl p-2.5">
+                    <p class="text-[11px] text-indigo-200">Total</p>
+                    <p id="statTotal" class="text-lg sm:text-2xl font-extrabold">0</p>
+                </div>
+                <div class="bg-white/10 rounded-xl p-2.5">
+                    <p class="text-[11px] text-indigo-200">Wajib</p>
+                    <p id="statWajib" class="text-lg sm:text-2xl font-extrabold">0</p>
+                </div>
+                <div class="bg-white/10 rounded-xl p-2.5">
+                    <p class="text-[11px] text-indigo-200">Belum Dibuat</p>
+                    <p id="statBelum" class="text-lg sm:text-2xl font-extrabold">0</p>
+                </div>
+                <div class="bg-white/10 rounded-xl p-2.5">
+                    <p class="text-[11px] text-indigo-200">Selesai</p>
+                    <p id="statSelesai" class="text-lg sm:text-2xl font-extrabold">0</p>
+                </div>
+            </div>
+
+            <div class="mt-3 flex justify-between text-[11px] text-indigo-200">
+                <span>Mode: <strong id="syncStatus">Lokal Browser</strong></span>
+                <span>Update terakhir: <span id="lastUpdate">-</span></span>
+            </div>
+        </div>
+
+        <!-- Panel Aksi Admin -->
+        <div id="adminActionPanel" class="hidden space-y-2.5">
+            <button onclick="openModal()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Tambah Agenda Konten Baru</span>
+            </button>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="exportBackupJSON()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition">
+                    ⬇️ Export JSON
+                </button>
+                <label class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition text-center cursor-pointer">
+                    ⬆️ Import JSON
+                    <input type="file" id="importJsonInput" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                </label>
+                <button onclick="resetToDefaultData()" class="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition">
+                    🔄 Reset Awal
+                </button>
+            </div>
+        </div>
+
+        <!-- Ringkasan Per Kategori -->
+        <div>
+            <h3 class="text-xs font-bold text-slate-500 mb-2.5 tracking-wider uppercase">Ringkasan Per Kategori</h3>
+            <div id="categorySummaryGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"></div>
+        </div>
+
+        <!-- Daftar Agenda -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4">
+            <div class="flex flex-col gap-2.5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Daftar Agenda Konten</h3>
+                    <span id="filteredCountBadge" class="text-xs text-slate-500 font-medium">0 agenda ditampilkan</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <select id="filterBulan" onchange="renderApp()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Bulan</option>
+                        <option value="Januari">Januari</option>
+                        <option value="Februari">Februari</option>
+                        <option value="Maret">Maret</option>
+                        <option value="April">April</option>
+                        <option value="Mei">Mei</option>
+                        <option value="Juni">Juni</option>
+                        <option value="Juli">Juli</option>
+                        <option value="Agustus">Agustus</option>
+                        <option value="September">September</option>
+                        <option value="Oktober">Oktober</option>
+                        <option value="November">November</option>
+                        <option value="Desember">Desember</option>
+                    </select>
+                    <select id="filterPrioritas" onchange="renderApp()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Prioritas</option>
+                        <option value="Wajib">Wajib</option>
+                        <option value="Opsional">Opsional</option>
+                    </select>
+                    <select id="filterStatus" onchange="renderApp()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Semua Status</option>
+                        <option value="Belum Dibuat">Belum Dibuat</option>
+                        <option value="Proses Desain">Proses Desain</option>
+                        <option value="Revisi">Revisi</option>
+                        <option value="Siap Posting">Siap Posting</option>
+                        <option value="Selesai">Selesai</option>
+                    </select>
+                    <input type="text" id="searchKeyword" oninput="renderApp()" placeholder="Cari agenda / PIC..." class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <div id="agendaList" class="divide-y divide-slate-100 max-h-[560px] overflow-y-auto pr-1"></div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-5 text-slate-400 text-xs">
+        &copy; 2026–2027 Agenda Konten Sosmed.
+    </footer>
+
+    <!-- MODAL TAMBAH / EDIT AGENDA (Tombol Batal & Simpan di kiri bawah) -->
+    <div id="agendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 id="modalTitle" class="font-bold text-slate-800 text-base">Tambah Agenda Konten</h3>
+                <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form id="agendaForm" onsubmit="handleFormSubmit(event)" class="space-y-3.5">
+                <input type="hidden" id="editId">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal</label>
+                        <input type="date" id="inputTanggal" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Prioritas</label>
+                        <select id="inputPrioritas" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Wajib">Wajib</option>
+                            <option value="Opsional">Opsional</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Agenda / Konten</label>
+                    <input type="text" id="inputNama" required placeholder="Contoh: HUT Instansi / Peringatan Nasional" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+                        <input type="text" id="inputKategori" list="kategoriOptions" required placeholder="Pilih / ketik kategori" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                        <datalist id="kategoriOptions">
+                            <option value="Hari Besar Nasional & Umum">
+                            <option value="Hari Besar Islam">
+                            <option value="Hari Besar Non-Islam">
+                            <option value="Mitra Komisi XI & BAKN">
+                            <option value="Naungan Golkar">
+                            <option value="Partai Parlemen">
+                            <option value="Pejabat Tinggi Negara">
+                            <option value="Ormas & Mahasiswa Islam">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Sub Kategori</label>
+                        <input type="text" id="inputSubKategori" placeholder="Contoh: Kelembagaan" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Status Produksi</label>
+                        <select id="inputStatus" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Belum Dibuat">Belum Dibuat</option>
+                            <option value="Proses Desain">Proses Desain</option>
+                            <option value="Revisi">Revisi</option>
+                            <option value="Siap Posting">Siap Posting</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">PIC / Desainer</label>
+                        <input type="text" id="inputPic" placeholder="Nama PIC" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Keterangan / Arahan Konten</label>
+                    <textarea id="inputKeterangan" rows="2" placeholder="Catatan singkat, referensi, atau copywriting..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+                <div class="flex items-center justify-start space-x-2.5 pt-2">
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow-sm">Simpan</button>
+                    <button type="button" onclick="closeModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-sm transition">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL LOGIN ADMIN -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-slate-800 text-base">Masuk Mode Admin</h3>
+                <button type="button" onclick="toggleAdminLogin()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <p class="text-xs text-slate-500">Masukkan PIN Admin untuk menambah, mengubah status, atau mengedit agenda konten.</p>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">PIN Admin</label>
+                    <input type="password" id="adminPinInput" onkeydown="if(event.key==='Enter') verifyAdmin()" placeholder="Masukkan PIN (Default: 1234)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-center justify-start space-x-2.5 pt-1">
+                    <button type="button" onclick="verifyAdmin()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition">Masuk</button>
+                    <button type="button" onclick="toggleAdminLogin()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl text-sm transition">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI FIREBASE (OPSIONAL)
+        // Isi jika ingin sinkronisasi otomatis antar-HP via Firestore
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYitwUw2Vv4eDz5oyG5Zq-50ZaVmMEkoo",
+            authDomain: "kalender-konten-c7c1b.firebaseapp.com",
+            projectId: "kalender-konten-c7c1b",
+            storageBucket: "kalender-konten-c7c1b.firebasestorage.app",
+            messagingSenderId: "252864555230",
+            appId: "1:252864555230:web:575abb76aa33f0fa2eba4f"
+        };
+
+        const ADMIN_PIN = "1234";
+        const STORAGE_KEY = "agenda_konten_sosmed_2027_v1";
+        const COLLECTION_NAME = "agenda_konten_2027";
+
+        const BULAN_NAMA = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        const BULAN_SINGKAT = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+        const HARI_NAMA = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+
+        // Seluruh data awal dari data.json tertanam langsung di sini
+        const defaultAgenda = [
+  {
+    "id": 1,
+    "tanggal": "2027-01-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Jumat",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Libur Nasional",
+    "nama": "Tahun Baru 2027 Masehi",
+    "prioritas": "Wajib",
+    "keterangan": "Hari Libur Nasional resmi awal tahun Masehi.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 2,
+    "tanggal": "2027-01-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Jumat",
+    "kuartal": "Q1",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Badan Pemeriksa Keuangan (BPK RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 1 Januari 1947. Mitra utama Komisi XI dan BAKN DPR RI.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 3,
+    "tanggal": "2027-01-03",
+    "tgl_angka": 3,
+    "tgl_bulan": "03 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Naungan Golkar",
+    "sub_kategori": "Ormas / Hasta Karya",
+    "nama": "HUT Ormas MKGR (Musyawarah Kekeluargaan Gotong Royong)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 3 Januari 1960. Salah satu Trikarya pendiri Partai Golkar.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 4,
+    "tanggal": "2027-01-05",
+    "tgl_angka": 5,
+    "tgl_bulan": "05 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Isra Mikraj Nabi Muhammad SAW (27 Rajab 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional sesuai kalender Hijriah 1448 H.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 5,
+    "tanggal": "2027-01-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Lingkungan",
+    "nama": "Hari Gerakan Satu Juta Pohon",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan nasional pelestarian lingkungan & penghijauan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 76,
+    "tanggal": "2027-01-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT PDI Perjuangan (Partai Demokrasi Indonesia Perjuangan)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 10 Januari 1973 (HUT ke-54 pada 2027). Tanggal resmi yang diperingati DPP PDI Perjuangan setiap tahun.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 6,
+    "tanggal": "2027-01-15",
+    "tgl_angka": 15,
+    "tgl_bulan": "15 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Jumat",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sejarah & Pertahanan",
+    "nama": "Hari Dharma Samudera",
+    "prioritas": "Opsional",
+    "keterangan": "Memperingati pertempuran Laut Aru (15 Januari 1962).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 7,
+    "tanggal": "2027-01-23",
+    "tgl_angka": 23,
+    "tgl_bulan": "23 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Sabtu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Nisfu Sya'ban (15 Sya'ban 1448 H)",
+    "prioritas": "Opsional",
+    "keterangan": "Perkiraan malam Nisfu Sya'ban 1448 H (bersifat sunnah/kultural).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 8,
+    "tanggal": "2027-01-25",
+    "tgl_angka": 25,
+    "tgl_bulan": "25 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Kesehatan",
+    "nama": "Hari Gizi Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Ditetapkan Kemenkes RI (25 Januari 1951).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 130,
+    "tanggal": "2027-01-31",
+    "tgl_angka": 31,
+    "tgl_bulan": "31 Jan",
+    "bulan_sort": "01 - Januari",
+    "bulan": "Januari",
+    "bulan_angka": 1,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Islam",
+    "nama": "Harlah Nahdlatul Ulama (NU - Versi Masehi)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 31 Januari 1926 (Harlah ke-101 pada 2027). Juga diperingati versi Hijriah setiap 16 Rajab.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 131,
+    "tanggal": "2027-02-05",
+    "tgl_angka": 5,
+    "tgl_bulan": "05 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Jumat",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Milad Himpunan Mahasiswa Islam (HMI)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan oleh Lafran Pane di Yogyakarta pada 5 Februari 1947 (Milad ke-80 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 9,
+    "tanggal": "2027-02-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Sabtu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Tahun Baru Imlek 2578 Kongzili",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional (Cuti Bersama umumnya 5 Februari 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 10,
+    "tanggal": "2027-02-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Sabtu",
+    "kuartal": "Q1",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Gerindra (Gerakan Indonesia Raya)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 6 Februari 2008.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 11,
+    "tanggal": "2027-02-08",
+    "tgl_angka": 8,
+    "tgl_bulan": "08 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Awal Puasa Ramadan 1448 H (1 Ramadan 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Perkiraan awal Ramadan 1448 H (menunggu ketetapan Sidang Isbat Kemenag).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 12,
+    "tanggal": "2027-02-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pers & Media",
+    "nama": "Hari Pers Nasional (HPN)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 5 Tahun 1985 (bertepatan dengan HUT PWI 9 Februari 1946). Sangat relevan untuk Humas/PR.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 13,
+    "tanggal": "2027-02-11",
+    "tgl_angka": 11,
+    "tgl_bulan": "11 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Kamis",
+    "kuartal": "Q1",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Menteri Kabinet",
+    "nama": "HUT Sugiono (Menteri Luar Negeri RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 11 Februari 1979.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 14,
+    "tanggal": "2027-02-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Viktor Bungtilu Laiskodat (Ketua Fraksi NasDem DPR RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 17 Februari 1965 (Usia ke-62 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 15,
+    "tanggal": "2027-02-21",
+    "tgl_angka": 21,
+    "tgl_bulan": "21 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Lingkungan",
+    "nama": "Hari Peduli Sampah Nasional (HPSN)",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan nasional pengelolaan sampah & lingkungan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 16,
+    "tanggal": "2027-02-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Peringatan Nuzulul Quran (17 Ramadan 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan turunnya Al-Qur'an pada malam 17 Ramadan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 132,
+    "tanggal": "2027-02-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Feb",
+    "bulan_sort": "02 - Februari",
+    "bulan": "Februari",
+    "bulan_angka": 2,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemudi Islam",
+    "nama": "Harlah Pemudi Persatuan Islam (Pemudi Persis)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 28 Februari 1954 (Harlah ke-73 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 17,
+    "tanggal": "2027-03-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Penegakan Kedaulatan Negara",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 2 Tahun 2022 (Serangan Umum 1 Maret 1949).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 133,
+    "tanggal": "2027-03-02",
+    "tgl_angka": 2,
+    "tgl_bulan": "02 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pelajar Islam",
+    "nama": "Harlah Ikatan Pelajar Nahdlatul Ulama (IPNU)",
+    "prioritas": "Opsional",
+    "keterangan": "Didirikan di Semarang pada 24 Februari / 2 Maret 1955 (Harlah ke-72 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 60,
+    "tanggal": "2027-03-02",
+    "tgl_angka": 2,
+    "tgl_bulan": "02 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Jazuli Juwaini (Ketua Fraksi PKS DPR RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 2 Maret 1968 (Usia ke-59 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 18,
+    "tanggal": "2027-03-08",
+    "tgl_angka": 8,
+    "tgl_bulan": "08 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional",
+    "nama": "Hari Perempuan Internasional (International Women's Day)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan global kesetaraan & pemberdayaan perempuan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 19,
+    "tanggal": "2027-03-08",
+    "tgl_angka": 8,
+    "tgl_bulan": "08 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Suci Nyepi (Tahun Baru Saka 1949)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Hindu.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 20,
+    "tanggal": "2027-03-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Seni & Budaya",
+    "nama": "Hari Musik Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Keppres No. 10 Tahun 2013 (tanggal lahir W.R. Soepratman).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 21,
+    "tanggal": "2027-03-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Raya Idulfitri 1448 H (1 Syawal 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional Idulfitri Hari ke-1 (menunggu Sidang Isbat).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 22,
+    "tanggal": "2027-03-11",
+    "tgl_angka": 11,
+    "tgl_bulan": "11 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Kamis",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Raya Idulfitri 1448 H (2 Syawal 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional Idulfitri Hari ke-2.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 134,
+    "tanggal": "2027-03-14",
+    "tgl_angka": 14,
+    "tgl_bulan": "14 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Milad Ikatan Mahasiswa Muhammadiyah (IMM)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan di Yogyakarta pada 14 Maret 1964 / 29 Syawal 1384 H (Milad ke-63 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 23,
+    "tanggal": "2027-03-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Lingkungan",
+    "nama": "Hari Air Sedunia (World Water Day)",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan PBB mengenai konservasi sumber daya air.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 135,
+    "tanggal": "2027-03-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemuda Islam",
+    "nama": "Harlah Pemuda Persatuan Islam (Pemuda Persis)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 22 Maret 1936 (Harlah ke-91 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 24,
+    "tanggal": "2027-03-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sejarah Nasional",
+    "nama": "Hari Peringatan Bandung Lautan Api",
+    "prioritas": "Opsional",
+    "keterangan": "Memperingati peristiwa Bandung Lautan Api (24 Maret 1946).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 136,
+    "tanggal": "2027-03-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Harlah Himpunan Mahasiswa Persatuan Islam (Hima Persis)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 24 Maret 1996 (Harlah ke-31 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 137,
+    "tanggal": "2027-03-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Rabu",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Harlah Himpunan Mahasiswi Persatuan Islam (Himi Persis)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 24 Maret 1996 (Harlah ke-31 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 25,
+    "tanggal": "2027-03-26",
+    "tgl_angka": 26,
+    "tgl_bulan": "26 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Jumat",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Wafat Yesus Kristus (Jumat Agung)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Kristen & Katolik.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 26,
+    "tanggal": "2027-03-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Minggu",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Kebangkitan Yesus Kristus (Paskah)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Kristen & Katolik.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 138,
+    "tanggal": "2027-03-29",
+    "tgl_angka": 29,
+    "tgl_bulan": "29 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Senin",
+    "kuartal": "Q1",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Milad Kesatuan Aksi Mahasiswa Muslim Indonesia (KAMMI)",
+    "prioritas": "Wajib",
+    "keterangan": "Dideklarasikan di Malang pada 29 Maret 1998 (Milad ke-29 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 27,
+    "tanggal": "2027-03-30",
+    "tgl_angka": 30,
+    "tgl_bulan": "30 Mar",
+    "bulan_sort": "03 - Maret",
+    "bulan": "Maret",
+    "bulan_angka": 3,
+    "hari": "Selasa",
+    "kuartal": "Q1",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Seni & Budaya",
+    "nama": "Hari Film Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Keppres No. 25 Tahun 1999.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 28,
+    "tanggal": "2027-04-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Kelautan & Perikanan",
+    "nama": "Hari Nelayan Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan apresiasi bagi nelayan Indonesia.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 29,
+    "tanggal": "2027-04-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Jumat",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari TNI Angkatan Udara (HUT TNI AU)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 9 April 1946.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 139,
+    "tanggal": "2027-04-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Harlah Pergerakan Mahasiswa Islam Indonesia (PMII)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan di Surabaya pada 17 April 1960 / 21 Syawal 1379 H (Harlah ke-67 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 30,
+    "tanggal": "2027-04-21",
+    "tgl_angka": 21,
+    "tgl_bulan": "21 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Rabu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Kartini",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 108 Tahun 1964 (Hari kelahiran R.A. Kartini).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 31,
+    "tanggal": "2027-04-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Lingkungan",
+    "nama": "Hari Bumi (Earth Day)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan global pelestarian bumi & iklim.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 32,
+    "tanggal": "2027-04-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Transportasi",
+    "nama": "Hari Angkutan Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan sektor transportasi nasional.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 140,
+    "tanggal": "2027-04-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemuda Islam",
+    "nama": "Harlah Gerakan Pemuda Ansor (GP Ansor)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 24 April 1934 / 10 Muharram 1353 H (Harlah ke-93 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 33,
+    "tanggal": "2027-04-26",
+    "tgl_angka": 26,
+    "tgl_bulan": "26 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Senin",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Kebencanaan",
+    "nama": "Hari Kesiapsiagaan Bencana Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Ditetapkan BNPB sejak 26 April 2017.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 34,
+    "tanggal": "2027-04-27",
+    "tgl_angka": 27,
+    "tgl_bulan": "27 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hukum & HAM",
+    "nama": "Hari Bhakti Pemasyarakatan",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan sistem pemasyarakatan di Indonesia.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 35,
+    "tanggal": "2027-04-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Apr",
+    "bulan_sort": "04 - April",
+    "bulan": "April",
+    "bulan_angka": 4,
+    "hari": "Rabu",
+    "kuartal": "Q2",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Lembaga Kebijakan Pengadaan Barang/Jasa Pemerintah (LKPP)",
+    "prioritas": "Opsional",
+    "keterangan": "Dibentuk 28 April 2007 (Perpres No. 106 Tahun 2007).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 36,
+    "tanggal": "2027-05-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Libur Nasional",
+    "nama": "Hari Buruh Internasional (May Day)",
+    "prioritas": "Wajib",
+    "keterangan": "Hari Libur Nasional sesuai Keppres No. 24 Tahun 2013.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 37,
+    "tanggal": "2027-05-02",
+    "tgl_angka": 2,
+    "tgl_bulan": "02 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Pendidikan Nasional (Hardiknas)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 316 Tahun 1959 (Hari lahir Ki Hadjar Dewantara).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 141,
+    "tanggal": "2027-05-02",
+    "tgl_angka": 2,
+    "tgl_bulan": "02 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemuda Islam",
+    "nama": "Milad Pemuda Muhammadiyah",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 2 Mei 1932 / 26 Zulhijah 1350 H (Milad ke-95 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 38,
+    "tanggal": "2027-05-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Kenaikan Yesus Kristus",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Kristen & Katolik.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 67,
+    "tanggal": "2027-05-11",
+    "tgl_angka": 11,
+    "tgl_bulan": "11 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Lembaga Tinggi",
+    "nama": "HUT Sultan Bachtiar Najamudin (Ketua DPD RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 11 Mei 1979 (Usia ke-48 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 39,
+    "tanggal": "2027-05-16",
+    "tgl_angka": 16,
+    "tgl_bulan": "16 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Arafah / Wukuf (9 Zulhijah 1448 H)",
+    "prioritas": "Opsional",
+    "keterangan": "Puncak ibadah haji di Padang Arafah.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 142,
+    "tanggal": "2027-05-16",
+    "tgl_angka": 16,
+    "tgl_bulan": "16 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemudi Islam",
+    "nama": "Milad Nasyiatul Aisyiyah (NA)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 16 Mei 1931 / 28 Zulhijah 1349 H (Milad ke-96 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 40,
+    "tanggal": "2027-05-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Senin",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Raya Iduladha 1448 H (10 Zulhijah 1448 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional Hari Raya Kurban (menunggu Sidang Isbat).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 41,
+    "tanggal": "2027-05-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Senin",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pendidikan & Literasi",
+    "nama": "Hari Buku Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Ditetapkan 17 Mei 2002 (bertepatan berdirinya Perpusnas RI).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 143,
+    "tanggal": "2027-05-19",
+    "tgl_angka": 19,
+    "tgl_bulan": "19 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Rabu",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Perempuan Islam",
+    "nama": "Milad 'Aisyiyah",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 19 Mei 1917 / 27 Rajab 1335 H (Milad ke-110 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 42,
+    "tanggal": "2027-05-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Kebangkitan Nasional (Harkitnas)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 316 Tahun 1959 (Berdirinya Boedi Oetomo 20 Mei 1908).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 43,
+    "tanggal": "2027-05-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Raya Waisak 2571 BE",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Buddha.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 44,
+    "tanggal": "2027-05-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Naungan Golkar",
+    "sub_kategori": "Ormas / Hasta Karya",
+    "nama": "HUT SOKSI (Sentral Organisasi Karyawan Swadiri Indonesia)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan 20 Mei 1960. Salah satu Trikarya pendiri Golkar.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 144,
+    "tanggal": "2027-05-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pemudi Islam",
+    "nama": "Harlah Fatayat Nahdlatul Ulama (Fatayat NU)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 20 Mei 1950 / 7 Rajab 1369 H (Harlah ke-77 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 45,
+    "tanggal": "2027-05-21",
+    "tgl_angka": 21,
+    "tgl_bulan": "21 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Jumat",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sejarah & Politik",
+    "nama": "Hari Peringatan Reformasi",
+    "prioritas": "Opsional",
+    "keterangan": "Memperingati peristiwa Reformasi 21 Mei 1998.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 46,
+    "tanggal": "2027-05-29",
+    "tgl_angka": 29,
+    "tgl_bulan": "29 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sosial",
+    "nama": "Hari Lanjut Usia Nasional (HLUN)",
+    "prioritas": "Opsional",
+    "keterangan": "Ditetapkan 29 Mei 1996 di Semarang.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 47,
+    "tanggal": "2027-05-30",
+    "tgl_angka": 30,
+    "tgl_bulan": "30 Mei",
+    "bulan_sort": "05 - Mei",
+    "bulan": "Mei",
+    "bulan_angka": 5,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Badan Pengawasan Keuangan dan Pembangunan (BPKP)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 30 Mei 1983 (Keppres No. 31 Tahun 1983).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 48,
+    "tanggal": "2027-06-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Libur Nasional",
+    "nama": "Hari Lahir Pancasila",
+    "prioritas": "Wajib",
+    "keterangan": "Hari Libur Nasional resmi sesuai Keppres No. 24 Tahun 2016.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 49,
+    "tanggal": "2027-06-05",
+    "tgl_angka": 5,
+    "tgl_bulan": "05 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Sabtu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Lingkungan",
+    "nama": "Hari Lingkungan Hidup Sedunia (World Environment Day)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan PBB untuk aksi perlindungan lingkungan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 50,
+    "tanggal": "2027-06-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Minggu",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Tahun Baru Islam 1449 H (1 Muharam 1449 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional Tahun Baru Hijriah.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 103,
+    "tanggal": "2027-06-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Kamis",
+    "kuartal": "Q2",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Muhammad Sarmuji (Ketua Fraksi Partai Golkar DPR RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 10 Juni 1974 (Usia ke-53 pada 2027). Sekjen DPP Partai Golkar.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 51,
+    "tanggal": "2027-06-15",
+    "tgl_angka": 15,
+    "tgl_bulan": "15 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Asyura (10 Muharam 1449 H)",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan 10 Muharam / Lebaran Anak Yatim.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 52,
+    "tanggal": "2027-06-21",
+    "tgl_angka": 21,
+    "tgl_bulan": "21 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Senin",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pertanian & Pangan",
+    "nama": "Hari Krida Pertanian",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan penghargaan bagi petani & sektor pertanian nasional.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 53,
+    "tanggal": "2027-06-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Daerah / Ibu Kota",
+    "nama": "HUT Kota Jakarta",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan hari jadi Kota Jakarta (22 Juni 1527).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 55,
+    "tanggal": "2027-06-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Senin",
+    "kuartal": "Q2",
+    "kategori": "Naungan Golkar",
+    "sub_kategori": "Sayap / Ormas Partai",
+    "nama": "HUT AMPI (Angkatan Muda Pembaharuan Indonesia)",
+    "prioritas": "Opsional",
+    "keterangan": "Didirikan 28 Juni 1978.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 56,
+    "tanggal": "2027-06-29",
+    "tgl_angka": 29,
+    "tgl_bulan": "29 Jun",
+    "bulan_sort": "06 - Juni",
+    "bulan": "Juni",
+    "bulan_angka": 6,
+    "hari": "Selasa",
+    "kuartal": "Q2",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Keluarga Nasional (Harganas)",
+    "prioritas": "Opsional",
+    "keterangan": "Keppres No. 39 Tahun 2014.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 57,
+    "tanggal": "2027-07-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari Bhayangkara (HUT Polri)",
+    "prioritas": "Wajib",
+    "keterangan": "Penetapan Peraturan Pemerintah No. 11 Tahun 1946 (1 Juli 1946).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 58,
+    "tanggal": "2027-07-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Bank Indonesia (BI)",
+    "prioritas": "Wajib",
+    "keterangan": "Resmi beroperasi sebagai Bank Sentral RI pada 1 Juli 1953 (Mitra utama Komisi XI).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 61,
+    "tanggal": "2027-07-12",
+    "tgl_angka": 12,
+    "tgl_bulan": "12 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Senin",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Ekonomi & Koperasi",
+    "nama": "Hari Koperasi Nasional (Harkopnas)",
+    "prioritas": "Wajib",
+    "keterangan": "Kongres Koperasi pertama di Tasikmalaya (12 Juli 1947).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 62,
+    "tanggal": "2027-07-15",
+    "tgl_angka": 15,
+    "tgl_bulan": "15 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Lembaga Tinggi",
+    "nama": "HUT Ahmad Muzani (Ketua MPR RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 15 Juli 1968.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 145,
+    "tanggal": "2027-07-18",
+    "tgl_angka": 18,
+    "tgl_bulan": "18 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Minggu",
+    "kuartal": "Q3",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pelajar Islam",
+    "nama": "Milad Ikatan Pelajar Muhammadiyah (IPM)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 18 Juli 1961 / 5 Shafar 1381 H (Milad ke-66 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 63,
+    "tanggal": "2027-07-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Keadilan Sejahtera (PKS)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 20 Juli 1998 (sebagai Partai Keadilan).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 64,
+    "tanggal": "2027-07-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hukum & Peradilan",
+    "nama": "Hari Bhakti Adhyaksa (HUT Kejaksaan RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan berdirinya Kejaksaan RI (22 Juli 1960).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 65,
+    "tanggal": "2027-07-23",
+    "tgl_angka": 23,
+    "tgl_bulan": "23 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Jumat",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Anak Nasional (HAN)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 44 Tahun 1984.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 66,
+    "tanggal": "2027-07-23",
+    "tgl_angka": 23,
+    "tgl_bulan": "23 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Jumat",
+    "kuartal": "Q3",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Kebangkitan Bangsa (PKB)",
+    "prioritas": "Wajib",
+    "keterangan": "Dideklarasikan 23 Juli 1998 (tanggal resmi peringatan Harlah PKB).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 146,
+    "tanggal": "2027-07-26",
+    "tgl_angka": 26,
+    "tgl_bulan": "26 Jul",
+    "bulan_sort": "07 - Juli",
+    "bulan": "Juli",
+    "bulan_angka": 7,
+    "hari": "Senin",
+    "kuartal": "Q3",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Lembaga Ulama",
+    "nama": "Milad Majelis Ulama Indonesia (MUI)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 26 Juli 1975 / 17 Rajab 1395 H (Milad ke-52 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 68,
+    "tanggal": "2027-08-07",
+    "tgl_angka": 7,
+    "tgl_bulan": "07 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Sabtu",
+    "kuartal": "Q3",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Menteri Kabinet",
+    "nama": "HUT Bahlil Lahadalia (Menteri ESDM / Ketum Partai Golkar)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 7 Agustus 1976.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 69,
+    "tanggal": "2027-08-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Kebangkitan Teknologi Nasional (Hakteknas)",
+    "prioritas": "Opsional",
+    "keterangan": "Keppres No. 71 Tahun 1995 (penerbangan perdana pesawat N-250 Gatotkaca).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 147,
+    "tanggal": "2027-08-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Pelajar Islam",
+    "nama": "Milad Pelajar Islam Indonesia (PII)",
+    "prioritas": "Opsional",
+    "keterangan": "Didirikan oleh Joesdi Ghazali di Yogyakarta pada 10 Agustus 1947 / 4 Mei 1947 (Milad ke-80 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 70,
+    "tanggal": "2027-08-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Menteri Kabinet",
+    "nama": "HUT Agus Harimurti Yudhoyono / AHY (Menko Infrastruktur)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 10 Agustus 1978. Menko Infrastruktur & Ketum Partai Demokrat.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 71,
+    "tanggal": "2027-08-14",
+    "tgl_angka": 14,
+    "tgl_bulan": "14 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Sabtu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Pramuka",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 238 Tahun 1961.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 72,
+    "tanggal": "2027-08-15",
+    "tgl_angka": 15,
+    "tgl_bulan": "15 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Minggu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Maulid Nabi Muhammad SAW (12 Rabiulawal 1449 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional peringatan kelahiran Nabi Muhammad SAW.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 73,
+    "tanggal": "2027-08-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Libur Nasional",
+    "nama": "Hari Proklamasi Kemerdekaan RI ke-82",
+    "prioritas": "Wajib",
+    "keterangan": "Hari Libur Nasional utama kenegaraan (17 Agustus 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 74,
+    "tanggal": "2027-08-18",
+    "tgl_angka": 18,
+    "tgl_bulan": "18 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Rabu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Konstitusi Republik Indonesia",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 18 Tahun 2008 (Pengesahan UUD 1945 oleh PPKI 18 Agustus 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 75,
+    "tanggal": "2027-08-19",
+    "tgl_angka": 19,
+    "tgl_bulan": "19 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Lembaga Tinggi Negara",
+    "nama": "HUT Mahkamah Agung RI",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 19 Agustus 1945.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 77,
+    "tanggal": "2027-08-23",
+    "tgl_angka": 23,
+    "tgl_bulan": "23 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Senin",
+    "kuartal": "Q3",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Amanat Nasional (PAN)",
+    "prioritas": "Wajib",
+    "keterangan": "Dideklarasikan 23 Agustus 1998.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 78,
+    "tanggal": "2027-08-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pers & Media",
+    "nama": "Hari Televisi Nasional (HUT TVRI)",
+    "prioritas": "Opsional",
+    "keterangan": "Siaran perdana TVRI pada 24 Agustus 1962.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 79,
+    "tanggal": "2027-08-29",
+    "tgl_angka": 29,
+    "tgl_bulan": "29 Agu",
+    "bulan_sort": "08 - Agustus",
+    "bulan": "Agustus",
+    "bulan_angka": 8,
+    "hari": "Minggu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Lembaga Tinggi Negara",
+    "nama": "HUT DPR RI (Hari Lahir Parlemen Indonesia)",
+    "prioritas": "Wajib",
+    "keterangan": "Pembentukan KNIP pada 29 Agustus 1945 sebagai cikal bakal DPR RI. Wajib bagi lingkungan DPR.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 80,
+    "tanggal": "2027-09-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Rabu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari Polisi Wanita (Polwan)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahirnya Polwan RI di Bukittinggi (1 September 1948).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 81,
+    "tanggal": "2027-09-04",
+    "tgl_angka": 4,
+    "tgl_bulan": "04 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Sabtu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Ekonomi & Layanan",
+    "nama": "Hari Pelanggan Nasional (Harpelnas)",
+    "prioritas": "Opsional",
+    "keterangan": "Dicanangkan 4 September 2003.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 54,
+    "tanggal": "2027-09-06",
+    "tgl_angka": 6,
+    "tgl_bulan": "06 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Senin",
+    "kuartal": "Q3",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Lembaga Tinggi",
+    "nama": "HUT Puan Maharani (Ketua DPR RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 6 September 1973 (Usia ke-54 pada 2027). Ketua DPR RI & Tokoh Senior PDI Perjuangan.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 82,
+    "tanggal": "2027-09-08",
+    "tgl_angka": 8,
+    "tgl_bulan": "08 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Rabu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pendidikan & Literasi",
+    "nama": "Hari Aksara Internasional",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan UNESCO untuk pemberantasan buta aksara.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 83,
+    "tanggal": "2027-09-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Olahraga Nasional (Haornas)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 67 Tahun 1985 (PON I di Surakarta 9 September 1948).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 84,
+    "tanggal": "2027-09-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Demokrat",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 9 September 2001.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 85,
+    "tanggal": "2027-09-11",
+    "tgl_angka": 11,
+    "tgl_bulan": "11 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Sabtu",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pers & Media",
+    "nama": "Hari Radio Nasional (HUT RRI)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdirinya RRI pada 11 September 1945.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 148,
+    "tanggal": "2027-09-12",
+    "tgl_angka": 12,
+    "tgl_bulan": "12 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Minggu",
+    "kuartal": "Q3",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Islam",
+    "nama": "Harlah Persatuan Islam (PERSIS)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan di Bandung pada 12 September 1923 (Harlah ke-104 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 86,
+    "tanggal": "2027-09-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Jumat",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sosial & Kemanusiaan",
+    "nama": "Hari Palang Merah Indonesia (HUT PMI)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 17 September 1945.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 149,
+    "tanggal": "2027-09-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Jumat",
+    "kuartal": "Q3",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Mahasiswa Islam",
+    "nama": "Milad Korps HMI-Wati (Kohati)",
+    "prioritas": "Opsional",
+    "keterangan": "Didirikan pada 17 September 1966 / 2 Jumadil Akhir 1386 H (Milad ke-61 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 87,
+    "tanggal": "2027-09-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Rabu",
+    "kuartal": "Q3",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Lembaga Penjamin Simpanan (LPS)",
+    "prioritas": "Wajib",
+    "keterangan": "Mulai beroperasi 22 September 2005 (Mitra utama Komisi XI).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 88,
+    "tanggal": "2027-09-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Jumat",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Tani Nasional",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 169 Tahun 1963 (Pengesahan UUPA 1960).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 112,
+    "tanggal": "2027-09-25",
+    "tgl_angka": 25,
+    "tgl_bulan": "25 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Sabtu",
+    "kuartal": "Q3",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Budisatrio Djiwandono (Ketua Fraksi Gerindra DPR RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 25 September 1981 (Usia ke-46 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 89,
+    "tanggal": "2027-09-26",
+    "tgl_angka": 26,
+    "tgl_bulan": "26 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Minggu",
+    "kuartal": "Q3",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "Hari Statistik Nasional / HUT Badan Pusat Statistik (BPS)",
+    "prioritas": "Wajib",
+    "keterangan": "Ditetapkan 26 September (UU No. 7 Tahun 1960). Mitra Komisi XI.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 90,
+    "tanggal": "2027-09-27",
+    "tgl_angka": 27,
+    "tgl_bulan": "27 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Senin",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Komunikasi & Digital",
+    "nama": "Hari Bhakti Postel",
+    "prioritas": "Opsional",
+    "keterangan": "Pengambilalihan Jawatan Pos, Telegraf, dan Telepon (27 September 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 91,
+    "tanggal": "2027-09-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Selasa",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Transportasi",
+    "nama": "Hari Kereta Api Nasional (HUT KAI)",
+    "prioritas": "Opsional",
+    "keterangan": "Pengambilalihan Balai Besar Kereta Api Bandung (28 September 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 92,
+    "tanggal": "2027-09-30",
+    "tgl_angka": 30,
+    "tgl_bulan": "30 Sep",
+    "bulan_sort": "09 - September",
+    "bulan": "September",
+    "bulan_angka": 9,
+    "hari": "Kamis",
+    "kuartal": "Q3",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sejarah Nasional",
+    "nama": "Hari Peringatan Gerakan 30 September (G30S)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan sejarah nasional (pengibaran bendera setengah tiang).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 93,
+    "tanggal": "2027-10-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Kesaktian Pancasila",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 153 Tahun 1967.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 94,
+    "tanggal": "2027-10-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Lembaga Tinggi",
+    "nama": "HUT Gibran Rakabuming Raka (Wakil Presiden RI)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 1 Oktober 1987.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 95,
+    "tanggal": "2027-10-02",
+    "tgl_angka": 2,
+    "tgl_bulan": "02 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Batik Nasional",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 33 Tahun 2009 (Penetapan Batik oleh UNESCO sebagai Warisan Budaya Takbenda).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 96,
+    "tanggal": "2027-10-05",
+    "tgl_angka": 5,
+    "tgl_bulan": "05 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Selasa",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari Tentara Nasional Indonesia (HUT TNI)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdirinya Tentara Keamanan Rakyat (5 Oktober 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 97,
+    "tanggal": "2027-10-12",
+    "tgl_angka": 12,
+    "tgl_bulan": "12 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Selasa",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Seni & Budaya",
+    "nama": "Hari Museum Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Ditetapkan 12 Oktober (Musyawarah Museum se-Indonesia 1962).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 150,
+    "tanggal": "2027-10-16",
+    "tgl_angka": 16,
+    "tgl_bulan": "16 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Islam",
+    "nama": "Milad Sarekat Islam (SI)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 16 Oktober 1905 sebagai Sarekat Dagang Islam (Milad ke-122 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 98,
+    "tanggal": "2027-10-17",
+    "tgl_angka": 17,
+    "tgl_bulan": "17 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Lembaga Tinggi",
+    "nama": "HUT Prabowo Subianto (Presiden Republik Indonesia)",
+    "prioritas": "Wajib",
+    "keterangan": "Lahir 17 Oktober 1951.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 99,
+    "tanggal": "2027-10-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai Golongan Karya (Golkar)",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 20 Oktober 1964 (Sekber Golkar).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 100,
+    "tanggal": "2027-10-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Santri Nasional",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 22 Tahun 2015 (Resolusi Jihad 22 Oktober 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 101,
+    "tanggal": "2027-10-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Kesehatan",
+    "nama": "Hari Dokter Nasional (HUT IDI)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdirinya Ikatan Dokter Indonesia (24 Oktober 1950).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 102,
+    "tanggal": "2027-10-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Kamis",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Sumpah Pemuda",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 316 Tahun 1959 (Kongres Pemuda II 28 Oktober 1928).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 104,
+    "tanggal": "2027-10-30",
+    "tgl_angka": 30,
+    "tgl_bulan": "30 Okt",
+    "bulan_sort": "10 - Oktober",
+    "bulan": "Oktober",
+    "bulan_angka": 10,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "Hari Oeang Republik Indonesia (HORI / Kementerian Keuangan)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan utama Kemenkeu RI (30 Oktober 1946). Mitra utama Komisi XI.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 105,
+    "tanggal": "2027-11-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Pahlawan",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 316 Tahun 1959 (Pertempuran Surabaya 10 November 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 106,
+    "tanggal": "2027-11-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Naungan Golkar",
+    "sub_kategori": "Ormas / Hasta Karya",
+    "nama": "HUT KOSGORO 1957",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 10 November 1957. Salah satu Trikarya pendiri Golkar.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 107,
+    "tanggal": "2027-11-11",
+    "tgl_angka": 11,
+    "tgl_bulan": "11 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Kamis",
+    "kuartal": "Q4",
+    "kategori": "Partai Parlemen",
+    "sub_kategori": "Partai Politik",
+    "nama": "HUT Partai NasDem",
+    "prioritas": "Wajib",
+    "keterangan": "Berdiri 11 November 2011.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 108,
+    "tanggal": "2027-11-12",
+    "tgl_angka": 12,
+    "tgl_bulan": "12 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Kesehatan",
+    "nama": "Hari Kesehatan Nasional (HKN)",
+    "prioritas": "Wajib",
+    "keterangan": "Pencanangan pemberantasan malaria oleh Presiden Soekarno (12 November 1959).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 109,
+    "tanggal": "2027-11-14",
+    "tgl_angka": 14,
+    "tgl_bulan": "14 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari Brimob (HUT Korps Brigade Mobil Polri)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 14 November 1945.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 151,
+    "tanggal": "2027-11-18",
+    "tgl_angka": 18,
+    "tgl_bulan": "18 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Kamis",
+    "kuartal": "Q4",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Islam",
+    "nama": "Milad Muhammadiyah (Versi Masehi)",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan oleh K.H. Ahmad Dahlan di Yogyakarta pada 18 November 1912 (Milad ke-115 pada 2027). Juga diperingati setiap 8 Zulhijah.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 110,
+    "tanggal": "2027-11-19",
+    "tgl_angka": 19,
+    "tgl_bulan": "19 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Kementerian PPN / Bappenas",
+    "prioritas": "Opsional",
+    "keterangan": "Diperingati 19 November (mengacu pembentukan Bappenas 1963 / penataan kelembagaan). Mitra Komisi XI.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 111,
+    "tanggal": "2027-11-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Senin",
+    "kuartal": "Q4",
+    "kategori": "Mitra Komisi XI & BAKN",
+    "sub_kategori": "Kelembagaan",
+    "nama": "HUT Otoritas Jasa Keuangan (OJK)",
+    "prioritas": "Wajib",
+    "keterangan": "UU OJK disahkan 22 November 2011. Mitra utama Komisi XI.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 113,
+    "tanggal": "2027-11-24",
+    "tgl_angka": 24,
+    "tgl_bulan": "24 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Edhie Baskoro Yudhoyono / Ibas (Ketua Fraksi Demokrat DPR RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 24 November 1980.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 114,
+    "tanggal": "2027-11-25",
+    "tgl_angka": 25,
+    "tgl_bulan": "25 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Kamis",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Guru Nasional (HUT PGRI)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 78 Tahun 1994.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 115,
+    "tanggal": "2027-11-28",
+    "tgl_angka": 28,
+    "tgl_bulan": "28 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Menanam Pohon Indonesia (HMPI)",
+    "prioritas": "Opsional",
+    "keterangan": "Keppres No. 24 Tahun 2008.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 116,
+    "tanggal": "2027-11-29",
+    "tgl_angka": 29,
+    "tgl_bulan": "29 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Senin",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "ASN & Birokrasi",
+    "nama": "HUT KORPRI (Korps Pegawai Republik Indonesia)",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 82 Tahun 1971 (29 November 1971).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 152,
+    "tanggal": "2027-11-30",
+    "tgl_angka": 30,
+    "tgl_bulan": "30 Nov",
+    "bulan_sort": "11 - November",
+    "bulan": "November",
+    "bulan_angka": 11,
+    "hari": "Selasa",
+    "kuartal": "Q4",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Islam",
+    "nama": "Harlah Al Jam'iyatul Washliyah",
+    "prioritas": "Wajib",
+    "keterangan": "Didirikan di Medan pada 30 November 1930 / 9 Rajab 1349 H (Harlah ke-97 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 117,
+    "tanggal": "2027-12-01",
+    "tgl_angka": 1,
+    "tgl_bulan": "01 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Kesehatan",
+    "nama": "Hari AIDS Sedunia",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan global kesadaran & pencegahan HIV/AIDS.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 118,
+    "tanggal": "2027-12-03",
+    "tgl_angka": 3,
+    "tgl_bulan": "03 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Sosial",
+    "nama": "Hari Disabilitas Internasional",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan PBB untuk inklusi & hak penyandang disabilitas.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 119,
+    "tanggal": "2027-12-04",
+    "tgl_angka": 4,
+    "tgl_bulan": "04 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sejarah & Pertahanan",
+    "nama": "Hari Artileri Nasional",
+    "prioritas": "Opsional",
+    "keterangan": "Peresmian markas Artileri pertama di Yogyakarta (4 Desember 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 59,
+    "tanggal": "2027-12-05",
+    "tgl_angka": 5,
+    "tgl_bulan": "05 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Pejabat Tinggi Negara",
+    "sub_kategori": "Pimpinan Fraksi",
+    "nama": "HUT Jazilul Fawaid (Ketua Fraksi PKB DPR RI)",
+    "prioritas": "Opsional",
+    "keterangan": "Lahir 5 Desember 1971 (Usia ke-56 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 120,
+    "tanggal": "2027-12-09",
+    "tgl_angka": 9,
+    "tgl_bulan": "09 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Kamis",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Tata Kelola",
+    "nama": "Hari Antikorupsi Sedunia (Hakordia)",
+    "prioritas": "Wajib",
+    "keterangan": "Peringatan PBB & KPK RI. Sangat relevan untuk mitra pengawasan & parlemen.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 121,
+    "tanggal": "2027-12-10",
+    "tgl_angka": 10,
+    "tgl_bulan": "10 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Jumat",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Internasional / Hukum",
+    "nama": "Hari Hak Asasi Manusia (HAM) Sedunia",
+    "prioritas": "Wajib",
+    "keterangan": "Deklarasi Universal HAM PBB (10 Desember 1948).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 122,
+    "tanggal": "2027-12-12",
+    "tgl_angka": 12,
+    "tgl_bulan": "12 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Pembangunan & Sosial",
+    "nama": "Hari Transmigrasi",
+    "prioritas": "Opsional",
+    "keterangan": "Pemberangkatan transmigran pertama pasca-kemerdekaan (12 Desember 1950).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 123,
+    "tanggal": "2027-12-13",
+    "tgl_angka": 13,
+    "tgl_bulan": "13 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Senin",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Nusantara",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 126 Tahun 2001 (Deklarasi Djuanda 13 Desember 1957).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 124,
+    "tanggal": "2027-12-15",
+    "tgl_angka": 15,
+    "tgl_bulan": "15 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "TNI / Polri",
+    "nama": "Hari Juang Kartika (HUT TNI Angkatan Darat)",
+    "prioritas": "Wajib",
+    "keterangan": "Pertempuran Palagan Ambarawa (15 Desember 1945).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 125,
+    "tanggal": "2027-12-19",
+    "tgl_angka": 19,
+    "tgl_bulan": "19 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Bela Negara",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 28 Tahun 2006 (Berdirinya PDRI 19 Desember 1948).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 126,
+    "tanggal": "2027-12-20",
+    "tgl_angka": 20,
+    "tgl_bulan": "20 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Senin",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Sosial & Kemanusiaan",
+    "nama": "Hari Kesetiakawanan Sosial Nasional (HKSN)",
+    "prioritas": "Opsional",
+    "keterangan": "Peringatan solidaritas sosial nasional sejak 1958.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 127,
+    "tanggal": "2027-12-22",
+    "tgl_angka": 22,
+    "tgl_bulan": "22 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Rabu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Nasional & Umum",
+    "sub_kategori": "Hari Nasional (Keppres)",
+    "nama": "Hari Ibu Nasional",
+    "prioritas": "Wajib",
+    "keterangan": "Keppres No. 316 Tahun 1959 (Kongres Perempuan Indonesia I 22 Desember 1928).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 128,
+    "tanggal": "2027-12-25",
+    "tgl_angka": 25,
+    "tgl_bulan": "25 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Non-Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Hari Raya Natal (Kelahiran Yesus Kristus)",
+    "prioritas": "Wajib",
+    "keterangan": "Libur Nasional umat Kristen & Katolik (Cuti Bersama umumnya 24 Desember).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 153,
+    "tanggal": "2027-12-25",
+    "tgl_angka": 25,
+    "tgl_bulan": "25 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Sabtu",
+    "kuartal": "Q4",
+    "kategori": "Ormas & Mahasiswa Islam",
+    "sub_kategori": "Ormas Perempuan Islam",
+    "nama": "Harlah Persatuan Islam Istri (Persistri)",
+    "prioritas": "Opsional",
+    "keterangan": "Berdiri 25 Desember 1936 (Harlah ke-91 pada 2027).",
+    "status": "Belum Dibuat",
+    "pic": ""
+  },
+  {
+    "id": 129,
+    "tanggal": "2027-12-26",
+    "tgl_angka": 26,
+    "tgl_bulan": "26 Des",
+    "bulan_sort": "12 - Desember",
+    "bulan": "Desember",
+    "bulan_angka": 12,
+    "hari": "Minggu",
+    "kuartal": "Q4",
+    "kategori": "Hari Besar Islam",
+    "sub_kategori": "Keagamaan",
+    "nama": "Isra Mikraj Nabi Muhammad SAW (27 Rajab 1449 H)",
+    "prioritas": "Wajib",
+    "keterangan": "Terjadi dua kali di tahun Masehi 2027 karena siklus kalender Hijriah lebih pendek.",
+    "status": "Belum Dibuat",
+    "pic": ""
+  }
+];
+
+        let db = null;
+        let isAdmin = false;
+        let agendaItems = [];
+
+        function updateLiveClock() {
+            const now = new Date();
+            const fmtDate = new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).format(now);
+            const fmtTime = new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).format(now);
+            document.getElementById('liveClock').innerText = `${fmtDate} • ${fmtTime}`;
+        }
+        updateLiveClock();
+        setInterval(updateLiveClock, 1000);
+
+        function buildDateMeta(tanggalStr) {
+            const [y, m, d] = (tanggalStr || "2027-01-01").split("-").map(Number);
+            const year = y || 2027;
+            const mIdx = Math.max(0, Math.min(11, (m || 1) - 1));
+            const day = d || 1;
+            const dt = new Date(Date.UTC(year, mIdx, day, 12, 0, 0));
+            return {
+                tanggal: `${String(year).padStart(4, "0")}-${String(mIdx + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+                tgl_angka: day,
+                tgl_bulan: `${String(day).padStart(2, "0")} ${BULAN_SINGKAT[mIdx]}`,
+                bulan_sort: `${String(mIdx + 1).padStart(2, "0")} - ${BULAN_NAMA[mIdx]}`,
+                bulan: BULAN_NAMA[mIdx],
+                bulan_angka: mIdx + 1,
+                hari: HARI_NAMA[dt.getUTCDay()],
+                kuartal: `Q${Math.floor(mIdx / 3) + 1}`
+            };
+        }
+
+        function sortAgenda(list) {
+            return [...list].sort((a, b) => (a.tanggal || "").localeCompare(b.tanggal || "") || (Number(a.id) || 0) - (Number(b.id) || 0));
+        }
+
+        // Inisialisasi Data (Firebase jika diisi, atau LocalStorage langsung jalan)
+        try {
+            if (firebaseConfig.apiKey !== "GANTI_DENGAN_API_KEY_ANDA") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                document.getElementById('syncStatus').innerText = 'Firebase Cloud Realtime';
+                document.getElementById('setupBanner').classList.add('hidden');
+                db.collection(COLLECTION_NAME).onSnapshot((snapshot) => {
+                    if (snapshot.empty) {
+                        defaultAgenda.forEach(item => {
+                            const { id, ...rest } = item;
+                            db.collection(COLLECTION_NAME).doc(String(id)).set(rest);
+                        });
+                        return;
+                    }
+                    agendaItems = sortAgenda(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    renderApp();
+                });
+            } else {
+                document.getElementById('setupBanner').classList.remove('hidden');
+                const localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+                if (!Array.isArray(localData) || localData.length === 0) {
+                    agendaItems = sortAgenda(defaultAgenda);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(agendaItems));
+                } else {
+                    agendaItems = sortAgenda(localData);
+                }
+                renderApp();
+            }
+        } catch (e) {
+            console.error("Init error:", e);
+            agendaItems = sortAgenda(defaultAgenda);
+            renderApp();
+        }
+
+        function persistLocal() {
+            agendaItems = sortAgenda(agendaItems);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(agendaItems));
+            renderApp();
+        }
+
+        function toggleAdminLogin() {
+            if (isAdmin) {
+                isAdmin = false;
+                updateUIRole();
+                return;
+            }
+            const modal = document.getElementById('loginModal');
+            modal.classList.toggle('hidden');
+            document.getElementById('adminPinInput').value = '';
+            if (!modal.classList.contains('hidden')) {
+                setTimeout(() => document.getElementById('adminPinInput').focus(), 50);
+            }
+        }
+
+        function verifyAdmin() {
+            const pin = document.getElementById('adminPinInput').value;
+            if (pin === ADMIN_PIN) {
+                isAdmin = true;
+                toggleAdminLogin();
+                updateUIRole();
+            } else {
+                alert("PIN Admin salah!");
+            }
+        }
+
+        function updateUIRole() {
+            const badge = document.getElementById('roleBadge');
+            const actionPanel = document.getElementById('adminActionPanel');
+            const adminBtn = document.getElementById('adminBtn');
+
+            if (isAdmin) {
+                badge.innerText = "🛡️ Admin Mode";
+                badge.className = "text-xs bg-emerald-700 px-2.5 py-1 rounded-full font-medium";
+                actionPanel.classList.remove('hidden');
+                adminBtn.innerText = "Keluar Admin";
+                adminBtn.className = "bg-rose-500 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition shadow-sm";
+            } else {
+                badge.innerText = "👀 Public View";
+                badge.className = "text-xs bg-indigo-700 px-2.5 py-1 rounded-full font-medium";
+                actionPanel.classList.add('hidden');
+                adminBtn.innerText = "Admin Login";
+                adminBtn.className = "bg-indigo-500 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition shadow-sm";
+            }
+            renderApp();
+        }
+
+        function openModal(id = null) {
+            const modal = document.getElementById('agendaModal');
+            document.getElementById('agendaForm').reset();
+            document.getElementById('editId').value = '';
+
+            if (id !== null) {
+                document.getElementById('modalTitle').innerText = "Edit Agenda Konten";
+                const item = agendaItems.find(t => String(t.id) === String(id));
+                if (item) {
+                    document.getElementById('editId').value = item.id;
+                    document.getElementById('inputTanggal').value = item.tanggal || "2027-01-01";
+                    document.getElementById('inputNama').value = item.nama || "";
+                    document.getElementById('inputKategori').value = item.kategori || "Hari Besar Nasional & Umum";
+                    document.getElementById('inputSubKategori').value = item.sub_kategori || "";
+                    document.getElementById('inputPrioritas').value = item.prioritas || "Wajib";
+                    document.getElementById('inputStatus').value = item.status || "Belum Dibuat";
+                    document.getElementById('inputPic').value = item.pic || "";
+                    document.getElementById('inputKeterangan').value = item.keterangan || "";
+                }
+            } else {
+                document.getElementById('modalTitle').innerText = "Tambah Agenda Konten Baru";
+                document.getElementById('inputTanggal').value = "2027-01-01";
+                document.getElementById('inputKategori').value = "Hari Besar Nasional & Umum";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('agendaModal').classList.add('hidden');
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const id = document.getElementById('editId').value;
+            const meta = buildDateMeta(document.getElementById('inputTanggal').value);
+            const newData = {
+                ...meta,
+                kategori: document.getElementById('inputKategori').value.trim() || "Hari Besar Nasional & Umum",
+                sub_kategori: document.getElementById('inputSubKategori').value.trim(),
+                nama: document.getElementById('inputNama').value.trim(),
+                prioritas: document.getElementById('inputPrioritas').value,
+                keterangan: document.getElementById('inputKeterangan').value.trim(),
+                status: document.getElementById('inputStatus').value,
+                pic: document.getElementById('inputPic').value.trim()
+            };
+
+            if (db) {
+                try {
+                    if (id) {
+                        await db.collection(COLLECTION_NAME).doc(String(id)).update(newData);
+                    } else {
+                        await db.collection(COLLECTION_NAME).add(newData);
+                    }
+                } catch (e) {
+                    alert("Gagal menyimpan ke database: " + e.message);
+                }
+            } else {
+                if (id) {
+                    const idx = agendaItems.findIndex(t => String(t.id) === String(id));
+                    if (idx !== -1) agendaItems[idx] = { ...agendaItems[idx], ...newData };
+                } else {
+                    const maxId = agendaItems.reduce((m, item) => Math.max(m, Number(item.id) || 0), 0);
+                    agendaItems.push({ id: maxId + 1, ...newData });
+                }
+                persistLocal();
+            }
+            closeModal();
+        }
+
+        async function quickCycleStatus(id) {
+            if (!isAdmin) return;
+            const order = ["Belum Dibuat", "Proses Desain", "Revisi", "Siap Posting", "Selesai"];
+            const item = agendaItems.find(t => String(t.id) === String(id));
+            if (!item) return;
+            const nextStatus = order[(order.indexOf(item.status) + 1) % order.length];
+
+            if (db) {
+                await db.collection(COLLECTION_NAME).doc(String(id)).update({ status: nextStatus });
+            } else {
+                item.status = nextStatus;
+                persistLocal();
+            }
+        }
+
+        async function deleteAgenda(id) {
+            if (!confirm("Yakin ingin menghapus agenda konten ini?")) return;
+            if (db) {
+                await db.collection(COLLECTION_NAME).doc(String(id)).delete();
+            } else {
+                agendaItems = agendaItems.filter(t => String(t.id) !== String(id));
+                persistLocal();
+            }
+        }
+
+        function exportBackupJSON() {
+            const blob = new Blob([JSON.stringify(agendaItems, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `agenda-konten-2027-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) throw new Error("Format harus berupa array JSON");
+                    if (db) {
+                        for (const item of imported) {
+                            const { id, ...rest } = item;
+                            await db.collection(COLLECTION_NAME).doc(String(id || Date.now())).set(rest);
+                        }
+                    } else {
+                        agendaItems = sortAgenda(imported);
+                        persistLocal();
+                    }
+                    alert(`Berhasil mengimpor ${imported.length} agenda!`);
+                } catch (err) {
+                    alert("File JSON tidak valid: " + err.message);
+                }
+                event.target.value = "";
+            };
+            reader.readAsText(file);
+        }
+
+        function resetToDefaultData() {
+            if (!confirm("Kembalikan semua data ke data awal bawaan?")) return;
+            if (db) {
+                defaultAgenda.forEach(item => {
+                    const { id, ...rest } = item;
+                    db.collection(COLLECTION_NAME).doc(String(id)).set(rest);
+                });
+            } else {
+                agendaItems = sortAgenda(defaultAgenda);
+                persistLocal();
+            }
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case "Selesai": return "bg-emerald-50 text-emerald-700 border-emerald-200";
+                case "Siap Posting": return "bg-sky-50 text-sky-700 border-sky-200";
+                case "Proses Desain": return "bg-indigo-50 text-indigo-700 border-indigo-200";
+                case "Revisi": return "bg-rose-50 text-rose-700 border-rose-200";
+                default: return "bg-amber-50 text-amber-700 border-amber-200";
+            }
+        }
+
+        function renderApp() {
+            const filterBulan = document.getElementById('filterBulan').value;
+            const filterPrioritas = document.getElementById('filterPrioritas').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+
+            // Statistik utama
+            document.getElementById('statTotal').innerText = agendaItems.length;
+            document.getElementById('statWajib').innerText = agendaItems.filter(t => t.prioritas === 'Wajib').length;
+            document.getElementById('statBelum').innerText = agendaItems.filter(t => t.status === 'Belum Dibuat').length;
+            document.getElementById('statSelesai').innerText = agendaItems.filter(t => t.status === 'Selesai').length;
+            document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+            // Agenda terdekat yang belum selesai
+            const todayIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+            const upcoming = agendaItems.find(t => t.tanggal >= todayIso && t.status !== 'Selesai') || agendaItems[0];
+            if (upcoming) {
+                document.getElementById('nextAgendaTitle').innerText = upcoming.nama;
+                document.getElementById('nextAgendaMeta').innerText = `${upcoming.hari}, ${upcoming.tgl_bulan} (${upcoming.tanggal}) • ${upcoming.kategori} • Status: ${upcoming.status}`;
+            }
+
+            // Ringkasan per kategori
+            const catCounts = {};
+            agendaItems.forEach(item => {
+                const cat = item.kategori || "Lainnya";
+                catCounts[cat] = (catCounts[cat] || 0) + 1;
+            });
+            const catGrid = document.getElementById('categorySummaryGrid');
+            catGrid.innerHTML = Object.entries(catCounts).map(([cat, count]) => `
+                <div onclick="document.getElementById('searchKeyword').value='${cat.replace(/'/g, "\\'")}'; renderApp();" class="cursor-pointer bg-white hover:border-indigo-300 p-3 rounded-xl border border-slate-100 shadow-sm transition flex flex-col justify-between">
+                    <span class="text-[11px] font-semibold text-slate-500 line-clamp-1">${cat}</span>
+                    <span class="text-base font-extrabold text-indigo-600 mt-1">${count} <span class="text-[11px] font-medium text-slate-400">agenda</span></span>
+                </div>
+            `).join('');
+
+            // Filter daftar
+            const filteredData = agendaItems.filter(t => {
+                const matchBulan = !filterBulan || t.bulan === filterBulan;
+                const matchPrio = !filterPrioritas || t.prioritas === filterPrioritas;
+                const matchStatus = !filterStatus || t.status === filterStatus;
+                const haystack = `${t.nama} ${t.kategori} ${t.sub_kategori} ${t.keterangan} ${t.pic} ${t.tgl_bulan} ${t.hari}`.toLowerCase();
+                return matchBulan && matchPrio && matchStatus && haystack.includes(keyword);
+            });
+
+            document.getElementById('filteredCountBadge').innerText = `${filteredData.length} agenda ditampilkan`;
+
+            const listContainer = document.getElementById('agendaList');
+            if (filteredData.length === 0) {
+                listContainer.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Tidak ada agenda yang sesuai filter.</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = filteredData.map(t => {
+                const prioBadge = t.prioritas === 'Wajib'
+                    ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">Wajib</span>`
+                    : `<span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Opsional</span>`;
+
+                const statusClass = getStatusBadgeClass(t.status);
+                const statusBadge = `<button type="button" onclick="quickCycleStatus('${t.id}')" title="${isAdmin ? 'Klik untuk ganti status cepat' : ''}" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${statusClass} ${isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}">${t.status || 'Belum Dibuat'}</button>`;
+
+                const adminControls = isAdmin ? `
+                    <div class="flex items-center space-x-1 mt-2 sm:mt-0 shrink-0">
+                        <button onclick="openModal('${t.id}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Edit Agenda">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </button>
+                        <button onclick="deleteAgenda('${t.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Agenda">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="py-3.5 px-2 hover:bg-slate-50/80 rounded-xl transition flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                        <div class="flex items-start space-x-3 min-w-0">
+                            <div class="w-12 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 flex flex-col items-center justify-center shrink-0 border border-indigo-100">
+                                <span class="text-sm font-extrabold leading-none">${String(t.tgl_angka).padStart(2, '0')}</span>
+                                <span class="text-[10px] font-semibold uppercase mt-0.5">${(t.tgl_bulan || '').split(' ')[1] || ''}</span>
+                            </div>
+                            <div class="min-w-0 space-y-1">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[11px] font-semibold text-slate-400">${t.hari || ''}</span>
+                                    <span class="text-[11px] text-slate-300">•</span>
+                                    <span class="text-[11px] font-medium text-indigo-600">${t.kategori || ''}</span>
+                                    ${prioBadge}
+                                </div>
+                                <h4 class="font-bold text-slate-800 text-xs sm:text-sm leading-snug">${t.nama}</h4>
+                                ${t.keterangan ? `<p class="text-slate-500 text-[11px] leading-relaxed">${t.keterangan}</p>` : ''}
+                                <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                                    ${statusBadge}
+                                    ${t.pic ? `<span class="text-[11px] text-slate-500">PIC: <strong>${t.pic}</strong></span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        ${adminControls}
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
